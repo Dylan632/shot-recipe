@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>抄作业 Demo</title>
+<style>
+:root{
+  --bg:#f3f1ed; --ink:#1c1b1f; --muted:#6b6872; --line:#e6e2dc; --card:#fff;
+  --accent:#ff4d6d; --accent2:#ff8a3d; --ok:#1f9d6b; --warn:#d97706; --bad:#d64045;
+  --d-down:#ff8a3d; --d-right:#3b82f6; --d-left:#10b981; --d-up:#a855f7;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg)}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5}
+button{font:inherit;cursor:pointer;color:inherit}
+video{display:block;width:100%;height:100%;object-fit:cover;background:#000}
+
+/* ---------- 外层：手机 + 说明 ---------- */
+.stage{display:flex;gap:44px;justify-content:center;align-items:flex-start;padding:28px 16px 48px;max-width:1120px;margin:0 auto}
+.phone{width:min(375px,100%);height:780px;flex-shrink:0;border-radius:46px;background:#111114;padding:10px;box-shadow:0 30px 60px -20px rgba(40,30,20,.35),0 0 0 1px #2a2a2e inset}
+.screen{position:relative;width:100%;height:100%;border-radius:37px;overflow:hidden;background:#faf9f7}
+.notes{flex:1;max-width:440px;position:sticky;top:24px}
+@media (max-width:900px){.stage{flex-direction:column;align-items:center;gap:28px}.notes{position:static;max-width:375px;width:100%}}
+
+.notes h1{font-size:22px;letter-spacing:.5px}
+.notes .sub{color:var(--muted);font-size:14px;margin-top:4px}
+.autobtn{margin-top:16px;width:100%;height:46px;border:0;border-radius:14px;background:var(--ink);color:#fff;font-size:15px;font-weight:600}
+.nav{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+.nav button{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px;font-size:14px}
+.nav button .n{width:22px;height:22px;border-radius:50%;background:#efebe5;display:grid;place-items:center;font-size:12px;font-weight:600;flex-shrink:0}
+.nav button.on{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,77,109,.12)}
+.nav button.on .n{background:var(--accent);color:#fff}
+.note{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.note h2{font-size:16px}
+.note p{font-size:14px;color:#3d3b42;margin-top:8px}
+.credit{margin-top:12px;font-size:12px;color:var(--muted)}
+/* 自动演示：右侧只留大字解说，方便录屏 */
+.capbox{padding-top:40px}
+.capbox .no{font-size:13px;font-weight:700;color:var(--accent);letter-spacing:1px}
+.capbox .ct{font-size:30px;font-weight:700;line-height:1.35;margin-top:10px}
+.capbox .cs{font-size:17px;color:#4a4750;margin-top:14px;line-height:1.6}
+.capbox .bar{display:flex;gap:6px;margin-top:28px}
+.capbox .bar i{flex:1;height:4px;border-radius:2px;background:#e2ddd6}
+.capbox .bar i.on{background:var(--accent)}
+.capbox .stop{margin-top:28px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 12px;font-size:13px;color:var(--muted)}
+
+/* ---------- 手机内通用 ---------- */
+.sb{height:44px;padding:0 28px;display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:600;flex-shrink:0;position:relative;z-index:5}
+.sb .ic{display:flex;gap:5px;align-items:center;font-size:12px}
+.sb .bat{width:24px;height:11px;border:1.5px solid currentColor;border-radius:3px;position:relative}
+.sb .bat:after{content:"";position:absolute;inset:1.5px 5px 1.5px 1.5px;background:currentColor;border-radius:1px}
+.dk{color:#fff}
+.app{position:absolute;inset:0;display:flex;flex-direction:column}
+.hd{height:48px;display:flex;align-items:center;justify-content:center;position:relative;font-weight:600;font-size:16px;flex-shrink:0}
+.hd .bk{position:absolute;left:12px;top:8px;width:32px;height:32px;border:0;background:none;font-size:20px;line-height:1}
+.body{flex:1;overflow:auto;padding:4px 18px 18px}
+.body::-webkit-scrollbar{display:none}
+.foot{padding:12px 18px 26px;flex-shrink:0}
+.btn{display:block;width:100%;height:50px;border-radius:14px;border:0;font-size:16px;font-weight:600;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff}
+.btn.ghost{background:#efebe5;color:var(--ink)}
+.btn + .btn{margin-top:10px}
+.btn.sm{height:40px;font-size:14px;border-radius:11px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:12px}
+.heat{display:inline-flex;align-items:center;gap:6px;background:#fff0e8;color:#c2410c;font-size:12.5px;border-radius:999px;padding:5px 11px;font-weight:500}
+.heat:before{content:"";width:7px;height:7px;border-radius:50%;background:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.2)}
+.muted{color:var(--muted)}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;background:#efebe5;color:var(--muted);white-space:nowrap}
+.toast{position:absolute;left:50%;bottom:110px;transform:translateX(-50%);background:rgba(20,20,24,.9);color:#fff;font-size:13.5px;padding:9px 16px;border-radius:12px;white-space:nowrap;z-index:50;animation:fade 1.8s forwards}
+@keyframes fade{0%{opacity:0;transform:translate(-50%,6px)}10%,85%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
+.rlabel{position:absolute;left:8px;top:8px;font-size:11px;color:#fff;background:rgba(0,0,0,.5);padding:2px 8px;border-radius:6px;z-index:3}
+.thumb{position:relative;width:46px;height:62px;border-radius:9px;overflow:hidden;flex-shrink:0;background:#000}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* ---------- 仰拍天空 + 探头的猫（用户自己的版本） ---------- */
+.sky{position:absolute;inset:0;container-type:size;overflow:hidden;background:linear-gradient(#2a64cf,#4f93ea 65%,#86bdf6)}
+.sky .cl{position:absolute;border-radius:50%;background:rgba(255,255,255,.6);filter:blur(5px)}
+.pop{position:absolute;left:calc(50% - 28cqw);top:calc(50% - 29.12cqw);width:56cqw;transform-origin:50% 20%}
+.pop svg{width:100%;display:block;overflow:visible}
+.pop.ghost{opacity:.35}
+
+/* ---------- 1 短视频平台 ---------- */
+.ig{background:#000;color:#fff}
+.ig .top{height:44px;display:flex;align-items:center;justify-content:center;gap:22px;font-size:16px;color:rgba(255,255,255,.6);position:relative;z-index:3}
+.ig .top b{color:#fff;position:relative}
+.ig .top b:after{content:"";position:absolute;left:50%;bottom:-6px;width:18px;height:2.5px;margin-left:-9px;background:#fff;border-radius:2px}
+.ig .top .tag{position:absolute;left:14px;background:rgba(255,255,255,.14);color:rgba(255,255,255,.75);font-weight:400}
+.ig .full{position:absolute;inset:0;z-index:0}
+.ig .full:after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.35),transparent 18%,transparent 60%,rgba(0,0,0,.55))}
+.ig .side{position:absolute;right:12px;bottom:110px;display:flex;flex-direction:column;gap:16px;align-items:center;font-size:12px;z-index:3}
+.ig .side button{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:2px;color:#fff}
+.ig .side .ico{width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.3);display:grid;place-items:center;font-size:18px}
+.ig .side .pulse .ico{background:var(--accent);animation:pulse 1.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,77,109,.6)}100%{box-shadow:0 0 0 14px rgba(255,77,109,0)}}
+.ig .cap{position:absolute;left:16px;right:70px;bottom:26px;font-size:14px;z-index:3;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.ig .cap b{font-size:15px}
+.ig .cap .mus{font-size:12.5px;opacity:.9;margin-top:6px}
+.bubbles{position:absolute;left:14px;bottom:120px;display:flex;flex-direction:column;gap:6px;z-index:3}
+.bubbles span{background:rgba(0,0,0,.45);font-size:12.5px;padding:4px 10px;border-radius:12px;width:fit-content}
+.hint{position:absolute;right:62px;bottom:126px;background:#fff;color:var(--ink);font-size:12.5px;padding:6px 10px;border-radius:10px;z-index:4;white-space:nowrap}
+.hint:after{content:"";position:absolute;right:-5px;top:50%;margin-top:-5px;border:5px solid transparent;border-right:0;border-left-color:#fff}
+.mask{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:10}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;color:var(--ink);border-radius:22px 22px 0 0;padding:14px 18px 30px;z-index:11;animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+.sheet .grip{width:36px;height:5px;border-radius:3px;background:#ddd;margin:0 auto 14px}
+.sheet h3{font-size:15px;margin-bottom:14px}
+.sheet p{font-size:13px;color:var(--muted);margin:-8px 0 14px}
+.apps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;font-size:12px}
+.apps button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:6px}
+.apps .ai{width:54px;height:54px;border-radius:15px;background:#f0ede8;display:grid;place-items:center;font-size:20px}
+.apps .hl .ai{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:700;font-size:15px;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--accent)}
+.apps .hl{font-weight:600}
+
+/* ---------- 2 解析 ---------- */
+.src{display:flex;gap:12px;align-items:center}
+.src .t{font-size:14px;font-weight:600}
+.src .s{font-size:12.5px;color:var(--muted)}
+.steps{margin-top:6px}
+.step{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #f0ece6;font-size:14.5px}
+.step:last-child{border:0}
+.step .d{width:22px;height:22px;border-radius:50%;border:2px solid #ddd;flex-shrink:0;display:grid;place-items:center;font-size:12px;color:#fff}
+.step.run .d{border-color:var(--accent);border-top-color:transparent;animation:spin .8s linear infinite}
+.step.ok .d{background:var(--ok);border-color:var(--ok)}
+.step.wait{color:#b6b1aa}
+.step .r{margin-left:auto;font-size:13px;color:var(--muted)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err{text-align:center;padding:22px 16px}
+.err .ei{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:#fdecec;color:var(--bad);display:grid;place-items:center;font-size:24px;font-weight:700}
+.err h3{font-size:16.5px}
+.err p{font-size:13.5px;color:var(--muted);margin:6px 0 16px}
+
+/* ---------- 3 拆解 ---------- */
+.trick{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(120deg,var(--accent),var(--accent2)) border-box;border:1.5px solid transparent}
+.trick .k{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:1px}
+.trick h3{font-size:16px;margin:4px 0 8px}
+.trick ol{padding-left:20px;font-size:14px}
+.trick li{margin:3px 0}
+.trick li b{color:var(--accent)}
+.trick .alt{margin-top:8px;font-size:12.5px;color:var(--muted);background:#f7f5f2;border-radius:9px;padding:7px 10px}
+.ana .top{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700}
+.anagrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;align-items:center}
+.anavid{position:relative;aspect-ratio:9/16;border-radius:12px;overflow:hidden}
+.camsvg{width:100%;display:block}
+.anacap{margin-top:10px;font-size:13.5px;text-align:center;font-weight:600}
+.anacap span{color:var(--muted);font-weight:400}
+.sec{font-size:13px;font-weight:600;color:var(--muted);margin:18px 0 8px;display:flex;justify-content:space-between}
+.tl{display:flex;height:30px;border-radius:9px;overflow:hidden;gap:2px}
+.tl div{display:grid;place-items:center;font-size:12px;color:#fff;font-weight:700;opacity:.55;transition:opacity .15s}
+.tl div.on{opacity:1}
+.tlx{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:3px}
+.shot{display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid #f0ece6}
+.shot:last-child{border:0}
+.shot .t{font-size:14px;font-weight:600}
+.shot .s{font-size:12.5px;color:var(--muted)}
+.shot .re{margin-left:auto;font-size:11px;color:var(--ok);background:#e9f7f0;border-radius:6px;padding:1px 7px;white-space:nowrap}
+.dir{display:inline-block;width:18px;height:18px;border-radius:5px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:18px;margin-right:4px}
+.alb{display:flex;gap:10px;align-items:center;font-size:13px}
+.alb b{font-size:13.5px}
+
+/* ---------- 4 准备 ---------- */
+.chk{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid #f0ece6;cursor:pointer}
+.chk:last-child{border:0}
+.chk .b{width:22px;height:22px;border-radius:7px;border:2px solid #cfc9c0;flex-shrink:0;display:grid;place-items:center;color:#fff;font-size:13px;margin-top:1px}
+.chk.on .b{background:var(--ok);border-color:var(--ok)}
+.chk .t{font-size:14.5px;font-weight:600}
+.chk .s{font-size:12.5px;color:var(--muted)}
+
+/* ---------- 5 拍摄 ---------- */
+.cam{background:#0c0c0f;color:#fff}
+.cam .hd .bk{color:#fff}
+.dots{display:flex;gap:5px;position:absolute;right:16px;top:20px}
+.dots i{width:22px;height:4px;border-radius:2px;background:rgba(255,255,255,.25)}
+.dots i.done{background:var(--ok)}
+.dots i.cur{background:#fff}
+.vf{position:relative;flex:1;margin:0 10px;border-radius:20px;overflow:hidden}
+.minicam{position:absolute;right:8px;top:8px;width:74px;z-index:4;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.gtag{position:absolute;left:10px;top:10px;max-width:58%;font-size:12px;background:rgba(0,0,0,.5);padding:4px 10px;border-radius:10px;z-index:4}
+.entry{position:absolute;z-index:4;font-size:12.5px;font-weight:700;background:#fff;color:#111;padding:4px 10px;border-radius:999px;white-space:nowrap;animation:nudge 1s ease-in-out infinite}
+@keyframes nudge{50%{transform:var(--n)}}
+.big{position:absolute;inset:0;display:grid;place-items:center;font-size:96px;font-weight:800;z-index:5;text-shadow:0 4px 20px rgba(0,0,0,.5)}
+.rec{position:absolute;left:12px;top:12px;display:flex;align-items:center;gap:6px;font-size:13px;z-index:5;background:rgba(0,0,0,.45);padding:3px 10px;border-radius:999px}
+.rec:before{content:"";width:8px;height:8px;border-radius:50%;background:#ff3b30;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.3}}
+.cue{position:absolute;left:0;right:0;bottom:16px;display:flex;justify-content:center;gap:8px;z-index:5}
+.cue span{min-width:44px;text-align:center;padding:5px 8px;border-radius:10px;background:rgba(0,0,0,.45);font-size:15px;font-weight:700;color:rgba(255,255,255,.5)}
+.cue span.on{background:#fff;color:#111;transform:scale(1.12)}
+.cue span.hit.on{background:var(--accent);color:#fff}
+.pbar{position:absolute;left:0;right:0;top:0;height:4px;background:rgba(255,255,255,.2);z-index:5}
+.pbar i{display:block;height:100%;background:#ff3b30;width:0}
+.cpanel{padding:14px 18px 26px;flex-shrink:0}
+.cpanel .ins{font-size:14px;text-align:center;color:rgba(255,255,255,.85)}
+.cpanel .ins b{color:#fff}
+.shutter{width:72px;height:72px;border-radius:50%;border:4px solid #fff;background:none;margin:14px auto 0;display:grid;place-items:center}
+.shutter i{width:56px;height:56px;border-radius:50%;background:#ff3b30;transition:.2s}
+.shutter.dis{opacity:.4;pointer-events:none}
+.shutter.dis i{border-radius:12px;width:30px;height:30px}
+.res{background:#1d1d22;border-radius:18px;padding:14px 16px}
+.res h3{font-size:16px;display:flex;align-items:center;gap:8px}
+.res ul{list-style:none;margin:8px 0 12px;font-size:13.5px;color:rgba(255,255,255,.8)}
+.res li{margin:3px 0}
+.res .okc{color:#4ade80}
+.res .bdc{color:#fbbf24}
+.res .lnk{display:block;margin:10px auto 0;background:none;border:0;color:rgba(255,255,255,.55);font-size:13px;text-decoration:underline}
+
+/* ---------- 6 生成 & 预览 ---------- */
+.gen{text-align:center;padding-top:30px}
+.ring{width:84px;height:84px;margin:0 auto;border-radius:50%;background:conic-gradient(var(--accent) var(--p,0%),#ece8e2 0);display:grid;place-items:center}
+.ring:after{content:attr(data-p);width:68px;height:68px;border-radius:50%;background:#faf9f7;display:grid;place-items:center;font-weight:700;font-size:18px}
+.gen h3{margin-top:16px;font-size:17px}
+.gen .steps{text-align:left;margin-top:18px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cmp .pane{position:relative;aspect-ratio:9/16;border-radius:14px;overflow:hidden}
+.srcl{position:absolute;right:8px;bottom:8px;font-size:11px;color:#fff;background:rgba(0,0,0,.5);padding:2px 8px;border-radius:6px;z-index:3}
+.strip{display:flex;gap:4px}
+.strip button{flex:1;border:0;padding:0;background:none;position:relative;border-radius:8px;overflow:hidden;aspect-ratio:9/14}
+.strip button.on{outline:2.5px solid var(--accent);outline-offset:1px}
+.strip .no{position:absolute;left:4px;top:2px;font-size:10px;color:#fff;font-weight:700;z-index:2}
+.strip .kind{position:absolute;left:0;right:0;bottom:0;font-size:9.5px;color:#fff;background:rgba(0,0,0,.45);text-align:center;z-index:2}
+.fb{display:flex;gap:6px;flex-wrap:wrap}
+.fb button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px;font-size:13px}
+.fb button.on{border-color:var(--accent);color:var(--accent);background:#fff5f7}
+.ans{margin-top:10px;font-size:13.5px;background:#f6f4f0;border-radius:12px;padding:10px 12px}
+
+/* ---------- 7 完成 ---------- */
+.okb{text-align:center;padding:10px 0 4px}
+.okb .ci{width:58px;height:58px;margin:0 auto;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:28px}
+.okb h3{font-size:18px;margin-top:10px}
+.metric{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.metric .v{font-size:24px;font-weight:800;color:var(--accent);white-space:nowrap}
+.metric .l{font-size:12.5px;color:var(--muted)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.row2 .btn{margin-top:0}
+.trend{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0ece6}
+.trend:last-child{border:0}
+.trend .t{font-size:14px;font-weight:600}
+.trend .s{font-size:12px}
+.trend .go{margin-left:auto;border:0;background:var(--ink);color:#fff;border-radius:9px;padding:6px 11px;font-size:12.5px;white-space:nowrap;opacity:.35;cursor:default}
+.trend .go.alt{background:#efebe5;color:var(--ink)}
+.ticon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:19px;flex-shrink:0}
+.up{color:#c2410c}.peak{color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone"><div class="screen" id="screen"></div></div>
+  <aside class="notes" id="notes"></aside>
+</div>
+
+<script>
+/* ===== 数据：从原片里真实拆出来的 7 个镜头（ffmpeg 场景检测） ===== */
+const CUTS = [0, 0.9, 1.567, 2.333, 3.2, 3.867, 4.667, 5.6];
+const DIRS = ['下','右','左','上','下','左','右'];
+const DNAME = {下:'下方',上:'上方',左:'左边',右:'右边'};
+const DCOL  = {下:'var(--d-down)',右:'var(--d-right)',左:'var(--d-left)',上:'var(--d-up)'};
+const ROT   = {下:0,上:180,左:90,右:-90};
+const SH    = ['右','左','上'];          // 需要现拍的方向（"下"已从相册匹配到）
+const dur = i => CUTS[i+1]-CUTS[i];
+const shotAt = t => { for(let i=0;i<7;i++) if(t<CUTS[i+1]) return i; return 6; };
+const ease = p => 1-Math.pow(1-Math.min(1,Math.max(0,p)),3);
+
+const S = {
+  view:'ig', shareOpen:false, slow:true, sound:true, fromRec:false,
+  shot:0, phase:'ready', takes:[0,0,0], retakeFrom:null,
+  checks:[false,false,false,false], fb:null, sheet:null, startAt:null, cap:null
+};
+function resetFlow(){
+  Object.assign(S,{shareOpen:false,fromRec:false,shot:0,phase:'ready',takes:[0,0,0],retakeFrom:null,checks:[false,false,false,false],fb:null,sheet:null});
+}
+
+/* ===== 计时器与动画帧：切页面时统一清掉 ===== */
+let T = [], RAF = 0;
+const later = (fn,ms) => T.push(setTimeout(fn,ms));
+const every = (fn,ms) => T.push(setInterval(fn,ms));
+const loop = fn => { const step = () => { fn(); RAF = requestAnimationFrame(step); }; step(); };
+const clearT = () => { T.forEach(clearTimeout); T = []; cancelAnimationFrame(RAF); };
+
+const $ = s => document.querySelector(s);
+const screen = $('#screen');
+
+/* ===== 用户的版本：一只橘猫从画面边缘探头 ===== */
+function cat({glasses=false,ghost=false}={}){
+  const f = ghost ? '#fff' : '#eda25a', d = ghost ? '#fff' : '#c97a35';
+  return `<svg viewBox="0 0 100 260">
+    <rect x="30" y="70" width="40" height="190" rx="14" fill="${d}"/>
+    <path d="M17 44 L23 2 L46 28Z M83 44 L77 2 L54 28Z" fill="${f}"/>
+    ${ghost?'':'<path d="M24 34 L26 13 L38 27Z M76 34 L74 13 L62 27Z" fill="#f4b7b7"/>'}
+    <ellipse cx="50" cy="52" rx="37" ry="33" fill="${f}"/>
+    ${ghost?'':`<path d="M44 22 L46 34 M50 20 L50 34 M56 22 L54 34" stroke="${d}" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="50" cy="66" rx="17" ry="12" fill="#fbe3c8"/>
+    ${glasses?`<rect x="22" y="40" width="24" height="15" rx="6" fill="#141418"/><rect x="54" y="40" width="24" height="15" rx="6" fill="#141418"/><rect x="45" y="44" width="10" height="3" fill="#141418"/><rect x="25" y="42" width="8" height="3" rx="1.5" fill="#fff" opacity=".35"/>`
+      :`<ellipse cx="36" cy="49" rx="4.5" ry="6" fill="#2b2220"/><ellipse cx="64" cy="49" rx="4.5" ry="6" fill="#2b2220"/>`}
+    <path d="M45 61 L55 61 L50 67Z" fill="#c75b6b"/>
+    <path d="M50 67 Q46 72 41 70 M50 67 Q54 72 59 70" stroke="#7a4a2a" stroke-width="1.6" fill="none" stroke-linecap="round"/>`}
+  </svg>`;
+}
+/* 探头位置：p=0 在画外，p=1 停在画面里；脖子永远朝向进入的那条边 */
+function popT(d,p){
+  const e = ease(p);
+  if(d==='下'||d==='上'){
+    const s = d==='下'?1:-1;
+    return `translate(0, calc(${(50*(1-e)+17*e)*s}cqh + ${32*(1-e)*s}cqw)) rotate(${ROT[d]}deg)`;
+  }
+  const s = d==='右'?1:-1;
+  return `translate(${(84*(1-e)+15*e)*s}cqw, 0) rotate(${ROT[d]}deg)`;
+}
+const CLOUDS = `<i class="cl" style="left:-10%;top:12%;width:55%;height:9%"></i><i class="cl" style="right:-14%;top:58%;width:60%;height:10%"></i>`;
+function sky(d,p,{id='',glasses,ghostAt=false}={}){
+  const g = glasses ?? d==='下';
+  return `<div class="sky"${id?` id="${id}"`:''}>${CLOUDS}
+    ${ghostAt?`<div class="pop ghost" style="transform:${popT(d,1)}">${cat({ghost:true})}</div>`:''}
+    <div class="pop live" style="transform:${popT(d,p)}">${cat({glasses:g})}</div></div>`;
+}
+
+/* ===== 虚拟机位图（俯视）：手机在中间，主角沿虚线探进来 ===== */
+const CAMP = {下:[[80,192],[80,132]], 上:[[80,8],[80,68]], 左:[[6,100],[60,100]], 右:[[154,100],[100,100]]};
+function camSvg(d,p,{small=false}={}){
+  const [[sx,sy],[ex,ey]] = CAMP[d], e = ease(p);
+  const cx = sx+(ex-sx)*e, cy = sy+(ey-sy)*e;
+  return `<svg viewBox="0 0 160 200" class="camsvg">
+    <rect width="160" height="200" rx="12" fill="#eef0f3"/>
+    ${small?'':'<text x="10" y="18" font-size="10.5" font-weight="700" fill="#1c1b1f">机位 · 俯视</text><text x="10" y="31" font-size="8.5" fill="#6b6872">手机平放，镜头朝天</text>'}
+    <line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="#b9bcc4" stroke-width="2.2" stroke-dasharray="1 5" stroke-linecap="round"/>
+    <line x1="${sx}" y1="${sy}" x2="${cx}" y2="${cy}" stroke="#e0353f" stroke-width="2.6" stroke-dasharray="1 5" stroke-linecap="round"/>
+    <circle cx="${sx}" cy="${sy}" r="3.5" fill="#1c1b1f"/>
+    <rect x="${ex-3}" y="${ey-3}" width="6" height="6" fill="#1c1b1f"/>
+    <rect x="66" y="78" width="28" height="44" rx="6" fill="#1c1b1f"/>
+    <circle cx="80" cy="90" r="6" fill="#3a3a42"/><circle cx="80" cy="90" r="3" fill="#60a5fa"/>
+    <circle cx="80" cy="90" r="11" fill="none" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="2 2"/>
+    <g transform="translate(${cx} ${cy}) rotate(${ROT[d]}) scale(1.35)">
+      <rect x="-5" y="4" width="10" height="26" rx="4" fill="#c97a35"/>
+      <path d="M-9 -4 L-7 -15 L-1 -8Z M9 -4 L7 -15 L1 -8Z" fill="#eda25a"/>
+      <circle r="9" fill="#eda25a"/>
+    </g>
+    ${small?'':`<text x="${sx+(sx>120?-6:sx<40?6:8)}" y="${sy+(sy>180?-6:sy<20?12:-8)}" font-size="8.5" fill="#1c1b1f" text-anchor="${sx>120?'end':'start'}">Start</text>`}
+  </svg>`;
+}
+
+const sb = dark => `<div class="sb${dark?' dk':''}"><span>9:41</span><span class="ic">5G <span class="bat"></span></span></div>`;
+const heat = () => `<span class="heat">「探头卡点」类视频近 7 天热度上升 · 示意数据</span>`;
+const vid = (id,extra='') => `<video id="${id}" src="assets/ref.mp4" poster="assets/poster.jpg" playsinline loop autoplay ${S.sound?'':'muted'} ${extra}></video>`;
+function playVids(){
+  screen.querySelectorAll('video').forEach(v => { v.muted = !S.sound; v.play().catch(()=>{ v.muted = true; v.play().catch(()=>{}); }); });
+}
+function toast(msg){
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  screen.appendChild(t); setTimeout(()=>t.remove(),1800);
+}
+const dirBadge = d => `<span class="dir" style="background:${DCOL[d]}">${d}</span>`;
+
+/* ===== 页面 ===== */
+const V = {}, A = {};
+
+V.ig = () => `
+<div class="app ig">
+  <div class="full">${vid('v0')}</div>
+  ${sb(true)}
+  <div class="top"><span class="tag">短视频平台 · 示意</span><span>关注</span><b>推荐</b></div>
+  <div class="bubbles"><span>怎么拍的？？四个方向都有头</span><span>戴墨镜那下笑死</span><span>想让我家猫也来一个</span></div>
+  <div class="side">
+    <button><span class="ico">♥</span>220万</button>
+    <button><span class="ico">✎</span>9,476</button>
+    <button><span class="ico">★</span>收藏</button>
+    <button class="pulse" data-act="share"><span class="ico">↗</span>分享</button>
+  </div>
+  ${S.shareOpen?'':'<div class="hint">刷到想拍的视频，点分享</div>'}
+  <div class="cap"><b>@ccihancelik_</b><div>Heyyy 🫏</div><div class="mus">♪ 配乐：音乐剧《汉密尔顿》选段</div></div>
+  ${S.shareOpen?`
+  <div class="mask" data-act="closeShare"></div>
+  <div class="sheet">
+    <div class="grip"></div><h3>分享到</h3>
+    <div class="apps">
+      <button data-act="noop"><span class="ai">💬</span>私信</button>
+      <button data-act="noop"><span class="ai">🔗</span>复制链接</button>
+      <button class="hl" data-act="toParse"><span class="ai">抄作业</span>小影</button>
+      <button data-act="noop"><span class="ai">⋯</span>更多</button>
+    </div>
+  </div>`:''}
+</div>`;
+A.ig = playVids;
+
+V.parse = () => `
+<div class="app">
+  ${sb()}
+  <div class="hd"><button class="bk" data-act="toIg">✕</button>抄作业</div>
+  <div class="body">
+    <div class="card src"><div class="thumb"><img src="assets/s1.jpg" alt=""></div><div><div class="t">Heyyy 🫏 四面探头</div><div class="s">@ccihancelik_ · ${S.fromRec?'来自你上传的屏幕录制':'来自分享链接'}</div></div></div>
+    <div style="margin-top:12px">${heat()}</div>
+    <div class="card" id="pc"><div class="steps" id="steps"></div></div>
+    <p class="muted" style="font-size:12.5px;margin-top:10px;text-align:center">只分析镜头结构，不保存、不复用原视频的画面</p>
+  </div>
+</div>`;
+const PSTEPS = [['读取视频','5.6 秒'],['识别镜头切换','7 个镜头'],['识别音乐重音','7 个切点'],['分析机位与动作','仰拍 · 机位固定'],['生成拍摄脚本','完成']];
+A.parse = () => {
+  let i = 0;
+  const draw = () => {
+    $('#steps').innerHTML = PSTEPS.map(([n,r],j)=>{
+      const st = j<i ? 'ok' : j===i ? 'run' : 'wait';
+      return `<div class="step ${st}"><span class="d">${st==='ok'?'✓':''}</span>${j===0&&S.fromRec?'读取屏幕录制':n}<span class="r">${st==='ok'?r:''}</span></div>`;
+    }).join('');
+  };
+  draw();
+  const tick = () => {
+    i++; draw();
+    if(i < PSTEPS.length) later(tick, AUTO?1100:750);
+    else later(()=>go('breakdown'), 600);
+  };
+  later(tick, 900);
+};
+
+V.breakdown = () => `
+<div class="app">
+  ${sb()}
+  <div class="hd"><button class="bk" data-act="toIg">‹</button>拆解结果</div>
+  <div class="body">
+    ${heat()}
+    <div class="card trick">
+      <div class="k">门道</div>
+      <h3>看起来是从四面八方探头，其实只用了一个机位</h3>
+      <ol>
+        <li>手机<b>平放在地上，镜头朝天</b>，全程不动</li>
+        <li>主角从手机的<b>下、右、左、上</b>四个方向低头探进画面</li>
+        <li>每次探头都<b>卡在音乐重音</b>上，切到下一段</li>
+      </ol>
+      <div class="alt">偷懒拍法：只拍一个方向，剪辑时把画面旋转 90° / 180°，也能得到其他方向。</div>
+    </div>
+    <div class="card ana">
+      <div class="top">虚拟机位分析 <span class="tag">与原片同步</span></div>
+      <div class="anagrid"><div class="anavid">${vid('bv')}<div class="rlabel" id="bno">镜头 1/7</div></div><div id="bcam">${camSvg('下',0)}</div></div>
+      <div class="anacap" id="bcap">主角从<b>下方</b>探入 <span>· 0.90 秒</span></div>
+    </div>
+    <div class="sec"><span>镜头脚本 · 7 段 · 共 5.6 秒</span><span>7 个切点</span></div>
+    <div class="tl" id="tl">${DIRS.map((d,i)=>`<div style="flex:${dur(i)};background:${DCOL[d]}">${d}</div>`).join('')}</div>
+    <div class="tlx"><span>0s</span><span>每个切点都落在音乐重音上</span><span>5.6s</span></div>
+    <div class="card" style="padding:4px 14px">
+      ${DIRS.map((d,i)=>`<div class="shot"><div class="thumb"><img src="assets/s${i+1}.jpg" alt=""></div><div><div class="t">镜头 ${i+1} · ${dur(i).toFixed(2)} 秒</div><div class="s">${dirBadge(d)}从${DNAME[d]}探入 · 仰拍</div></div>${i>=4?`<span class="re">复用镜头 ${DIRS.indexOf(d)+1}</span>`:''}</div>`).join('')}
+    </div>
+    <div class="card"><b style="font-size:14px">7 段其实只有 4 个方向</b><div class="muted" style="font-size:13px;margin-top:2px">后 3 段和前面的方向相同，拍一次就能复用。</div>
+      <div class="alb" style="margin-top:10px"><div class="thumb">${sky('下',1)}</div><div><b>相册里找到 1 段可以直接用</b><div class="muted">9 月 14 日 · 猫咪低头看手机（仰拍）<br>→ 用作「从下方探头」</div></div></div>
+    </div>
+  </div>
+  <div class="foot"><button class="btn" data-act="toPrep">只需再拍 3 段 · 约 5 分钟</button></div>
+</div>`;
+A.breakdown = () => {
+  playVids();
+  const v = $('#bv'); let last = -1;
+  loop(() => {
+    const t = v.currentTime, i = shotAt(t), d = DIRS[i];
+    const p = (t-CUTS[i]) / (dur(i)*0.55);
+    $('#bcam').innerHTML = camSvg(d, p);
+    if(i!==last){
+      last = i;
+      $('#bno').textContent = `镜头 ${i+1}/7`;
+      $('#bcap').innerHTML = `主角从<b style="color:${DCOL[d]}">${DNAME[d]}</b>探入 <span>· ${dur(i).toFixed(2)} 秒</span>`;
+      document.querySelectorAll('#tl div').forEach((el,j)=>el.classList.toggle('on',j===i));
+    }
+  });
+};
+
+const PREP = [
+  ['把手机平放在地上，镜头朝天','草地、桌面都行。全程不碰手机，四个方向才能拼得上'],
+  ['找好主角，备点零食','宠物或朋友都可以。把零食举在手机正上方，引导它低头探进来'],
+  ['可选：一副墨镜','原片的笑点就在这里'],
+  ['打开声音','拍摄时会播放节拍，跟着重音探头']
+];
+V.prep = () => `
+<div class="app">
+  ${sb()}
+  <div class="hd"><button class="bk" data-act="toBreakdown">‹</button>拍前准备</div>
+  <div class="body">
+    <p class="muted" style="font-size:13.5px">这几件事没做好，往往拍到一半才发现要全部重来。</p>
+    <div class="card" style="padding:2px 14px">
+      ${PREP.map(([t,s],i)=>`<div class="chk${S.checks[i]?' on':''}" data-act="check" data-i="${i}"><span class="b">${S.checks[i]?'✓':''}</span><div><div class="t">${t}</div><div class="s">${s}</div></div></div>`).join('')}
+    </div>
+    <div class="card" style="display:flex;gap:12px;align-items:center"><div style="width:96px;flex-shrink:0">${camSvg('右',1,{small:true})}</div><div class="muted" style="font-size:13px">接下来要拍：<br>${SH.map(d=>`${dirBadge(d)}从${DNAME[d]}探头`).join('<br>')}</div></div>
+  </div>
+  <div class="foot"><button class="btn" data-act="toShoot">准备好了，开拍</button></div>
+</div>`;
+
+const ENTRY = {
+  右:{css:'right:8px;top:50%;margin-top:-14px', t:'← 从右边探进来', n:'translateX(-6px)'},
+  左:{css:'left:8px;top:50%;margin-top:-14px', t:'从左边探进来 →', n:'translateX(6px)'},
+  上:{css:'left:50%;top:56px;transform:translateX(-50%)', t:'↓ 从上面探进来', n:'translate(-50%,6px)'},
+  下:{css:'left:50%;bottom:12px;transform:translateX(-50%)', t:'↑ 从下面探进来', n:'translate(-50%,-6px)'}
+};
+const isSlow = () => S.slow && S.shot===1 && S.takes[1]===0;
+function liveP(){
+  if(S.phase==='fail') return .45;
+  if(S.phase==='pass'||S.phase==='checking') return 1;
+  return 0;
+}
+V.shoot = () => {
+  const i = S.shot, d = SH[i], p = S.phase, last = i===SH.length-1;
+  let over = '', panel = '';
+  if(p==='ready') over = `<div class="gtag">白色虚影 = 头最后停的位置</div><div class="entry" style="${ENTRY[d].css};--n:${ENTRY[d].n}">${ENTRY[d].t}</div>`;
+  if(p==='countdown') over = `<div class="big" id="cd">3</div>`;
+  if(p==='rec') over = `<div class="pbar"><i id="pb"></i></div><div class="rec">录制中</div><div class="cue" id="cue"><span>1</span><span>2</span><span class="hit">探头</span><span>停住</span></div>`;
+  if(p==='ready'||p==='countdown'||p==='rec'){
+    panel = `<div class="ins">让主角从手机的<b>${DNAME[d]}</b>低头探进来 · 第 3 拍探头</div>
+      <button class="shutter${p==='ready'?'':' dis'}" data-act="record"><i></i></button>`;
+  } else if(p==='checking'){
+    panel = `<div class="res"><h3>正在检查这一段…</h3><ul><li>对比方向、位置和节拍</li></ul></div>`;
+  } else if(p==='pass'){
+    const next = S.retakeFrom ? '回到成片预览' : last ? '素材齐了，生成成片' : `下一段：从${DNAME[SH[i+1]]}探头`;
+    panel = `<div class="res"><h3><span class="okc">✓</span>这一段可以用</h3><ul><li class="okc">✓ 从${DNAME[d]}探入，方向正确</li><li class="okc">✓ 头停在画面中间</li><li class="okc">✓ 探头动作落在重音上</li></ul><button class="btn sm" data-act="next">${next}</button></div>`;
+  } else if(p==='fail'){
+    panel = `<div class="res"><h3><span class="bdc">!</span>探头慢了半拍</h3><ul><li>音乐切到下一段时，头才探进来一半，卡点会对不上。这一段建议重拍。</li></ul><button class="btn sm" data-act="retake">跟着节拍，重拍这一段</button><button class="lnk" data-act="next">就用这段</button></div>`;
+  }
+  return `
+<div class="app cam">
+  ${sb(true)}
+  <div class="hd"><button class="bk" data-act="toPrep">✕</button>第 ${i+1} / ${SH.length} 段 · 从${DNAME[d]}探头
+    <div class="dots">${SH.map((_,j)=>`<i class="${j===i?'cur':S.takes[j]>0?'done':''}"></i>`).join('')}</div></div>
+  <div class="vf">
+    ${sky(d, liveP(), {id:'vfs', ghostAt:true})}
+    <div class="minicam" id="mc">${camSvg(d, liveP(), {small:true})}</div>
+    ${over}
+  </div>
+  <div class="cpanel">${panel}</div>
+</div>`;
+};
+A.shoot = () => {
+  const p = S.phase, d = SH[S.shot];
+  if(p==='countdown'){
+    let n = 3;
+    every(()=>{ n--; if(n>0) $('#cd').textContent = n; else go('shoot',{phase:'rec'}); }, 650);
+  }
+  if(p==='rec'){
+    const BEAT = 520, t0 = performance.now(), slow = isSlow();
+    const pb = $('#pb'); pb.style.transition = `width ${BEAT*4}ms linear`;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>pb.style.width='100%'));
+    const live = $('#vfs .live');
+    loop(() => {
+      const el = performance.now()-t0, b = Math.min(3, Math.floor(el/BEAT));
+      document.querySelectorAll('#cue span').forEach((s,j)=>s.classList.toggle('on',j===b));
+      let hp = (el-2*BEAT) / (BEAT*0.9);
+      if(slow) hp = Math.min(.45, (el-2.6*BEAT) / (BEAT*2.4));
+      live.style.transform = popT(d, hp);
+      $('#mc').innerHTML = camSvg(d, hp, {small:true});
+    });
+    later(()=>go('shoot',{phase:'checking'}), BEAT*4+80);
+  }
+  if(p==='checking'){
+    const fail = isSlow();
+    S.takes[S.shot]++;
+    later(()=>go('shoot',{phase: fail?'fail':'pass'}), 900);
+  }
+};
+
+const GSTEPS = ['把 4 段素材排进原片的 7 个位置','7 个切点对齐音乐重音','统一 4 段天空的颜色和亮度','配上同款音乐（来自平台曲库）'];
+V.gen = () => `
+<div class="app">
+  ${sb()}
+  <div class="hd">生成成片</div>
+  <div class="body gen">
+    <div class="ring" id="ring" data-p="0%"></div>
+    <h3>正在按原片的节奏剪你的版本</h3>
+    <p class="muted" style="font-size:13px">大约 10 秒</p>
+    <div class="card steps" id="gsteps"></div>
+    <p class="muted" style="font-size:12.5px;margin-top:12px">生成失败也不会丢：素材已保存，可一键重试</p>
+  </div>
+</div>`;
+A.gen = () => {
+  let i = 0, pct = 0;
+  const draw = () => {
+    $('#gsteps').innerHTML = GSTEPS.map((n,j)=>{
+      const st = j<i?'ok':j===i?'run':'wait';
+      return `<div class="step ${st}"><span class="d">${st==='ok'?'✓':''}</span>${n}</div>`;
+    }).join('');
+  };
+  draw();
+  every(()=>{
+    pct = Math.min(100, pct+4);
+    const r = $('#ring'); r.style.setProperty('--p', pct+'%'); r.dataset.p = pct+'%';
+    const ni = Math.min(GSTEPS.length, Math.floor(pct/25));
+    if(ni!==i){ i = ni; draw(); }
+    if(pct>=100){ clearT(); later(()=>go('preview'),500); }
+  }, AUTO?280:120);
+};
+
+const kindOf = i => DIRS[i]==='下' ? '相册' : i>=4 ? '复用' : '现拍';
+const FB = {
+  repeat:['后面看着重复', '<b style="color:var(--ok)">✓ 已处理</b>：镜头 5–7 复用了前面的素材，已把它们<b>镜像翻转并换了起始帧</b>，看起来不再一模一样。'],
+  beat:['节奏没卡上', '<b style="color:var(--ok)">✓ 已修正</b>：7 个切点都对齐到音乐重音，最大调整 0.06 秒。'],
+  sky:['天空颜色不一样', '<b style="color:var(--ok)">✓ 已修正</b>：统一了 4 段素材的天空色温和亮度。']
+};
+V.preview = () => `
+<div class="app">
+  ${sb()}
+  <div class="hd"><button class="bk" data-act="toBreakdown">‹</button>成片预览</div>
+  <div class="body">
+    <div class="cmp">
+      <div class="pane">${vid('pa')}<div class="rlabel">原片</div></div>
+      <div class="pane"><div id="pb2"></div><div class="rlabel">你的版本</div><div class="srcl" id="pk">相册</div></div>
+    </div>
+    <div class="sec"><span>想改哪一段？点一下</span><span>7 段 · 5.6 秒</span></div>
+    <div class="strip" id="strip">${DIRS.map((d,i)=>`<button data-act="pickShot" data-i="${i}"><span class="no">${i+1}</span>${sky(d,1)}<span class="kind">${kindOf(i)}</span></button>`).join('')}</div>
+    <div class="sec"><span>哪里不满意？</span></div>
+    <div class="fb">${Object.entries(FB).map(([k,[n]])=>`<button class="${S.fb===k?'on':''}" data-act="fb" data-k="${k}">${n}</button>`).join('')}</div>
+    ${S.fb?`<div class="ans">${FB[S.fb][1]}</div>`:''}
+  </div>
+  <div class="foot"><button class="btn" data-act="publish">发布</button></div>
+  ${S.sheet!==null?(()=>{
+    const i = S.sheet, d = DIRS[i];
+    const same = DIRS.map((x,j)=>x===d?j+1:0).filter(Boolean);
+    return `<div class="mask" data-act="closeSheet"></div>
+    <div class="sheet"><div class="grip"></div><h3>镜头 ${i+1} · 从${DNAME[d]}探头</h3>
+      <p>改这一个方向，镜头 ${same.join('、')} 会一起更新。</p>
+      ${d==='下'?`<button class="btn" data-act="swapAlbum">从相册换一段</button>`
+               :`<button class="btn" data-act="retakeShot" data-i="${SH.indexOf(d)}">重拍「从${DNAME[d]}探头」</button>`}
+      <button class="btn ghost" data-act="closeSheet">取消</button></div>`;
+  })():''}
+</div>`;
+A.preview = () => {
+  playVids();
+  const v = $('#pa'), box = $('#pb2'); let last = -1;
+  loop(() => {
+    const t = v.currentTime, i = shotAt(t), d = DIRS[i];
+    if(i!==last){
+      last = i;
+      box.innerHTML = sky(d,0,{id:'ms'});
+      $('#pk').textContent = kindOf(i);
+      document.querySelectorAll('#strip button').forEach((b,j)=>b.classList.toggle('on',j===i));
+    }
+    const live = box.querySelector('.live');
+    if(live) live.style.transform = popT(d, (t-CUTS[i]) / (dur(i)*0.45));
+  });
+};
+
+V.done = () => {
+  let used = '';
+  if(S.startAt){ const s = Math.round((Date.now()-S.startAt)/1000); used = `${Math.floor(s/60)} 分 ${s%60} 秒`; }
+  return `
+<div class="app">
+  ${sb()}
+  <div class="hd"><button class="bk" data-act="toPreview">‹</button>已发布</div>
+  <div class="body">
+    <div class="okb"><div class="ci">✓</div><h3>你家猫的四面探头已发布</h3><p class="muted" style="font-size:13px">在潮流热度还在的时候发出去了</p></div>
+    <div class="card metric"><div><div class="l">从刷到这条视频，到发出你的版本</div><div class="l">${used?'本次演示实际用时；真实拍摄约 5–10 分钟':'真实拍摄约 5–10 分钟'}</div></div><div class="v">${used||'约 8 分钟'}</div></div>
+    <div class="row2"><button class="btn sm ghost" data-act="toastSave">保存到相册</button><button class="btn sm ghost" data-act="toastTpl">存为我的模板</button></div>
+    <div class="sec"><span>趁热度还在，再拍一个</span><span>潮流雷达</span></div>
+    <div class="card" style="padding:2px 14px">
+      <div class="trend"><span class="ticon" style="background:#fff0e8">🐈</span><div><div class="t">小猫踏步舞</div><div class="s up">抖音热榜 #43 · 上升中</div></div><span class="go">拍同款</span></div>
+      <div class="trend"><span class="ticon" style="background:#f3e8ff">💃</span><div><div class="t">ILLIT《我要逮捕你》舞蹈挑战</div><div class="s peak">官方活动 11 月 15 日截止</div></div><span class="go">拍同款</span></div>
+      <div class="trend"><span class="ticon" style="background:#e8f1ff">✨</span><div><div class="t">萌宠滑镜定格</div><div class="s muted">热榜 #19 · AI 特效，不用拍</div></div><span class="go alt">一键特效</span></div>
+    </div>
+  </div>
+</div>`;
+};
+
+/* ===== 交互 ===== */
+const ACT = {
+  noop:()=>toast('演示中请点「小影」'),
+  share:()=>{S.shareOpen=true; render();},
+  closeShare:()=>{S.shareOpen=false; render();},
+  toParse:()=>{S.startAt=Date.now(); S.shareOpen=false; S.fromRec=false; go('parse');},
+  uploadRec:()=>go('parse',{fromRec:true}),
+  toIg:()=>{resetFlow(); go('ig');},
+  toBreakdown:()=>go('breakdown'),
+  toPrep:()=>go('prep'),
+  check:el=>{const i=+el.dataset.i; S.checks[i]=!S.checks[i]; render();},
+  toShoot:()=>go('shoot',{shot:0,phase:'ready',takes:[0,0,0],retakeFrom:null}),
+  record:()=>go('shoot',{phase:'countdown'}),
+  retake:()=>go('shoot',{phase:'ready'}),
+  next:()=>{
+    if(S.retakeFrom){ const d=SH[S.shot]; S.retakeFrom=null; go('preview'); toast(`「从${DNAME[d]}探头」已替换`); return; }
+    if(S.shot<SH.length-1) go('shoot',{shot:S.shot+1,phase:'ready'}); else go('gen');
+  },
+  pickShot:el=>{S.sheet=+el.dataset.i; render();},
+  closeSheet:()=>{S.sheet=null; render();},
+  swapAlbum:()=>{S.sheet=null; render(); toast('已换成 10 月 2 日的另一段');},
+  retakeShot:el=>{const i=+el.dataset.i; S.sheet=null; S.fb=null; go('shoot',{shot:i,phase:'ready',retakeFrom:'preview'});},
+  fb:el=>{S.fb=el.dataset.k; render();},
+  toPreview:()=>go('preview'),
+  publish:()=>go('done'),
+  toastSave:()=>toast('已保存到相册'),
+  toastTpl:()=>toast('已存为模板：四面探头 · 7 段'),
+  jump:el=>{
+    const k = el.dataset.k; autoId++; stopVoice(); S.cap=null; resetFlow();
+    if(k==='parse') S.startAt=Date.now();
+    go(k);
+  },
+  restart:()=>{autoId++; stopVoice(); S.cap=null; resetFlow(); S.startAt=null; go('ig');},
+  auto:()=>autoplay()
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if(!el) return;
+  ACT[el.dataset.act]?.(el);
+});
+
+/* ===== 自动演示：按脚本点完整条流程，右侧同步字幕，配音逐段播放 ===== */
+let autoId = 0, AUTO = false;
+const VO = new Audio();
+function stopVoice(){ VO.pause(); AUTO = false; S.sound = true; }
+async function autoplay(){
+  const id = ++autoId;
+  const sleep = ms => new Promise((ok,stop)=>setTimeout(()=>autoId===id?ok():stop('stop'),ms));
+  const until = async f => { while(!f()) await sleep(100); };
+  const cap = (n,t,s) => { S.cap=[n,t,s]; renderNotes(); };
+  const tap = (act,data={}) => { const el=document.createElement('i'); Object.assign(el.dataset,data); ACT[act](el); };
+  // 播放第 n 段配音，播完才继续；音频加载失败就直接跳过
+  const voice = n => new Promise((ok,stop)=>{
+    VO.src = `assets/voice/seg${String(n).padStart(2,'0')}.mp3`;
+    VO.onended = () => autoId===id ? ok() : stop('stop');
+    VO.onerror = () => ok();
+    VO.play().catch(()=>ok());
+  });
+  // 原片声音只露开头几秒，之后静音，避免和配音打架
+  const hush = () => { S.sound = false; screen.querySelectorAll('video').forEach(v => v.muted = true); };
+  try{
+    VO.pause(); AUTO = true; S.sound = true;
+    resetFlow(); S.startAt = null;
+    cap(1,'刷短视频时，刷到一条想拍的','一头驴戴着墨镜，跟着《汉密尔顿》的节奏从四面八方探头。评论区都在问：这怎么拍的？'); go('ig');
+    await sleep(2600); hush();
+    await voice(1);
+    cap(1,'点分享，发给小影','入口就在分享菜单里：想拍的念头最强的那一刻，不用先切出去找功能。');
+    tap('share'); await voice(2);
+    tap('toParse');
+    cap(2,'小影解析这条视频','识别镜头切换、音乐重音、机位和动作。只分析结构，不搬运原视频的画面。');
+    await voice(3); await until(()=>S.view==='breakdown'); await sleep(300);
+    cap(3,'先点破门道','看起来是从四面八方探头，其实只用了一个机位：手机平放在地上，镜头朝天，主角从四个方向探进来。');
+    await voice(4);
+    const b = screen.querySelector('.body'); b.scrollTo({top:250,behavior:'smooth'});
+    cap(3,'虚拟机位图：和原片同步','左边播放原片，右边同步画出手机放在哪、主角从哪个方向进来。看一遍就懂怎么拍。');
+    await voice(5); b.scrollTo({top:9999,behavior:'smooth'});
+    cap(3,'7 段只有 4 个方向','后 3 段可以复用；相册里刚好有一段猫咪低头看手机的视频，直接用作「从下方探头」。只需要再拍 3 段。');
+    await voice(6);
+    tap('toPrep');
+    cap(3,'拍前准备：把失败提前','手机放稳、零食备好。拍到一半才发现手机动了，只能全部重来。');
+    const v7 = voice(7);
+    for(let i=0;i<4;i++){ await sleep(1300); tap('check',{i}); }
+    await v7; await sleep(300); tap('toShoot');
+    for(let i=0;i<SH.length;i++){
+      cap(3,`跟着拍：从${DNAME[SH[i]]}探头`, i===0?'箭头标出从哪边进来，白色虚影是头最后停的位置，角落的小机位图随时对照。':'跟着节拍，第 3 拍探头。');
+      if(i===0){ const v8 = voice(8); await sleep(6500); tap('record'); await v8; }
+      else { await sleep(1500); tap('record'); }
+      await until(()=>S.phase==='pass'||S.phase==='fail');
+      if(S.phase==='fail'){
+        cap(3,'慢了半拍，AI 及时拦下','只在会毁掉成片的时候打断，比如卡不上音乐。小瑕疵直接放过，因为快比完美重要。');
+        await voice(9); tap('retake'); await sleep(1500); tap('record');
+        await until(()=>S.phase==='pass');
+      }
+      await sleep(1300); tap('next');
+    }
+    cap(4,'按原片的节奏出片','4 段素材排进 7 个位置，切点对齐音乐重音，统一天空颜色，配上曲库里的同款音乐。');
+    await voice(10); await until(()=>S.view==='preview');
+    cap(4,'和原片左右对比','左边原片，右边你家的猫。哪一段不满意，点一下只改那一段。');
+    const v11 = voice(11);
+    await sleep(7000); tap('fb',{k:'repeat'});
+    await v11; await sleep(800); tap('publish');
+    cap(5,'发出去了，趁热度再拍一个','北极星指标是"从刷到到发出的时长"。潮流雷达接着推荐还在上升期的潮流（Demo 中只做展示）。');
+    await voice(12);
+    cap(5,'抄作业','好视频的作业，AI 帮你拆好步骤，你照着抄就行。');
+    await voice(13);
+    AUTO = false; S.sound = true;
+  }catch(e){ /* 被"停止/从头演示"打断 */ }
+}
+
+/* ===== 右侧说明 ===== */
+const STEPS = [
+  {k:'ig',     label:'进入：刷到视频，点分享', views:['ig']},
+  {k:'parse',  label:'开始：AI 解析视频',     views:['parse']},
+  {k:'breakdown', label:'核心：拆解 → 准备 → 拍摄', views:['breakdown','prep','shoot']},
+  {k:'gen',    label:'输出：生成并预览成片',   views:['gen','preview']},
+  {k:'done',   label:'完成后：趁热度再拍一个', views:['done']}
+];
+const NOTE = {
+  ig:['从刷到视频的那一刻开始','用户想拍同款的意愿，在刷到视频的瞬间最强。所以入口放在短视频平台的分享菜单里，用户不用先打开小影、再去找功能。也支持在小影首页粘贴链接。'],
+  parse:['把视频拆成能照着做的数据','分步显示 AI 正在做什么：镜头切换、音乐重音、机位和动作，等待更容易接受。只分析结构，不保存、不复用原视频的画面。'],
+  breakdown:['点破门道，再用机位图讲清楚','普通人看不懂的，往往只是一个关键技巧。门道卡一句话讲清；虚拟机位图和原片同步播放，画出手机放在哪、主角从哪进来（借鉴影视行业的机位示意图）。AI 还发现 7 段只有 4 个方向，并从相册找到 1 段可用素材，用户只需要拍 3 段。'],
+  prep:['把失败提前到开拍之前','拍到一半才发现手机动了，四个方向就拼不上，只能全部重来。所以把最容易导致失败的条件，在开拍前列成清单。'],
+  shoot:['方向指引 + 只拦致命问题','箭头标出主角从哪边进来，白色虚影标出头最后停的位置，角落的小机位图随时对照。拍完自动检查，但只在会毁掉成片时才打断（比如慢了半拍、卡不上音乐），小瑕疵直接放过：潮流窗口期短，快比完美重要。演示默认第 2 段会慢半拍。'],
+  gen:['按原片的节奏出片','把 4 段素材排进原片的 7 个位置，切点对齐音乐重音，统一天空的颜色。音乐用平台曲库里的同款，不搬运原视频的画面和音轨。'],
+  preview:['不满意就局部修，不用重来','左边原片、右边你的版本，同步播放。点某一段只改那一段；改一个方向时，复用了它的镜头会一起更新。也可以直接说"哪里不满意"，AI 给出对应的修正。'],
+  done:['趁热度还在，再拍一个','北极星指标是"从刷到视频到发出的时长"。发布后，潮流雷达推荐下一个还在上升期的潮流：需要实拍的进入"拍同款"，AI 特效类的直接交给特效模板。三条示例来自 10 月 28 日的抖音热榜。<br><br><b>说明：</b>正式版中这里的按钮可以直接进入对应流程；Demo 版本没有实现这一部分，只做展示，所以按钮不可点击。']
+};
+function renderNotes(){
+  if(S.cap){
+    const [n,t,s] = S.cap;
+    $('#notes').innerHTML = `<div class="capbox"><div class="no">STEP ${n} / 5</div><div class="ct">${t}</div><div class="cs">${s||''}</div>
+      <div class="bar">${[1,2,3,4,5].map(i=>`<i class="${i<=n?'on':''}"></i>`).join('')}</div>
+      <button class="stop" data-act="restart">停止自动演示</button></div>`;
+    return;
+  }
+  const [t,p] = NOTE[S.view];
+  $('#notes').innerHTML = `
+    <h1>抄作业</h1>
+    <div class="sub">小影新功能 Demo：刷到好视频 → 拆成脚本和机位图 → 带你拍 → 按原片节奏出片</div>
+    <button class="autobtn" data-act="auto">▶ 自动演示全流程（带配音，约 3 分钟，可直接录屏）</button>
+    <div class="nav">${STEPS.map((s,i)=>`<button class="${s.views.includes(S.view)?'on':''}" data-act="jump" data-k="${s.k}"><span class="n">${i+1}</span>${s.label}</button>`).join('')}</div>
+    <div class="note"><h2>${t}</h2><p>${p}</p></div>
+    <div class="credit">示例视频：@ccihancelik_（Instagram），配乐为音乐剧《汉密尔顿》选段，仅作演示引用。"你的版本"为示意动画。</div>`;
+}
+/* 浏览器不允许未经点击就出声：第一次点击页面时把原片声音打开 */
+document.addEventListener('pointerdown', () => {
+  screen.querySelectorAll('video').forEach(v => { v.muted = false; v.play().catch(()=>{}); });
+}, {once:true, capture:true});
+
+function go(view, patch){ Object.assign(S, patch||{}); S.view = view; render(); }
+function render(){
+  clearT();
+  screen.innerHTML = V[S.view]();
+  A[S.view]?.();
+  renderNotes();
+}
+render();
+</script>
+</body>
+</html>
